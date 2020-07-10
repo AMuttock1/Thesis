@@ -33,7 +33,7 @@ def tree(turtle,size):
       #  turtle.left(180)
       #  turtle.penup()
       #  turtle.forward(size*0.8)
-        print("random bit of text")
+      
         
         
       #  turtle.pendown()
