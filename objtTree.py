@@ -26,32 +26,49 @@ import numpy
 branches = [];
 
 class branch:
-    def __init__(self, length, dia, vel, gen):
+    def __init__(self, length, dia, vel, gen, fin):
         self.length = length;
         self.dia = dia;
         self.vel = vel;
         self.gen = gen;
        # self.number = number;
         self.area = (numpy.pi*(self.dia)**2)/4;
+        self.fin = fin;
         
     def split(self):
-        
+        # while self.gen <=2:
         lenD = self.length * 0.8;
         diaD = self.dia  *0.8;
         areaD = (numpy.pi*(diaD)**2)/4;
         genD = self.gen + 1;
         velD = self.vel*self.area/(2*areaD)
-        daughterA = branch(lenD, diaD, velD, genD)
-  #      daughterB = branch(lenD, diaD, velD, genD)
+        self.fin = True;
+        daughterA = branch(lenD, diaD, velD, genD, False)
+        daughterB = branch(lenD, diaD, velD, genD, False)
         branches.append(daughterA)
-
+        branches.append(daughterB)
+        
+        
 
      
-#def tree():
-trach = branch(0.12, 0.018, 1.96, 0)
-trach.split()
-    
-#tree();
-print (branches[0].length)
+def tree():
+    trach =  branch(0.12, 0.018, 1.96, 0, False);
+    branches.append(trach);
+    try:
+        for i in range(1000000):
+            while branches[i].gen <=15:
+                if branches[i].fin == False:
+                    
+                    branches[i].split()
+                else:
+                    break
+                
+    except:
+        print('end')
+        
+        
+tree();
+print (branches[2].length)
+print(len(branches))
 
 
