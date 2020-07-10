@@ -12,7 +12,7 @@ Created on Sun Jun 28 17:07:35 2020
 mew = 0.00001857;
 z=23;
  
-Q0=0.5;
+Q0=0.0005;
 
 def eqn1(length, dia, gen):
     
