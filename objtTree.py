@@ -25,10 +25,12 @@ import numpy
 #global array of bronchi
 branches = [];
 
+#global array of initial velocities as calculated based on frictionless assumption
+initVelocityList=[];    
 #some global terms:
 
 #number of generations
-finalGen = 20;
+finalGen = 10;
 #volume flow rate in trachea
 Q0 = 0.0005;
 #area of trachea
@@ -48,42 +50,94 @@ mew = 0.00001857;
 #P1 is found from a small pressure loss in trachea 
 P1 = P0 - ((8*numpy.pi*mew*L1*v1)/A0);
 
+
+
+   
+
 class branch:
-    def __init__(self, length, dia, vel, gen):
+    def __init__(self, length, dia, gen):
         self.length = length;
         self.dia = dia;
-        self.vel = vel;
+       # self.vel = vel;
         self.gen = gen;
        # self.number = number;
         self.area = (numpy.pi*(self.dia)**2)/4;
         self.fin = False;
-        #for now losses are derived by poiseuille flow only (laminar flow friction in pipes)
-        self.pLoss = self.Poiseuille
-        self.velEstimate = 0;
+       
+        #create array of velocities and pressures assigend to bronci and associated node
+        #during iteration array will have the last calculated value appended.
+        
+        self.velEstimate = [];
+        self.presEstimate = [];
+        self.presEstimate.append(100000);
+        
+        
+         #for now losses are derived by poiseuille flow only (laminar flow friction in pipes)
+        self.pLoss = [];
+        
+        #initialise index of daughter branches so that the daughter variables can 
+        #be retrieved 
+        self.daughterIndexA = int;
+        self.daughterIndexB = int;
+        
+        
+        self.daughterVelA = [];
+        self.daughterVelB = [];
+        self.daughterPresA = [];
+        self.daughterPresB = [];
+        
+  
+        
     
         
     def split(self):
         # while self.gen <=2:
         lenD = self.length * 0.8;
         diaD = self.dia  *0.8;
-        areaD = (numpy.pi*(diaD)**2)/4;
+        #areaD = (numpy.pi*(diaD)**2)/4;
         genD = self.gen + 1;
-        velD = self.vel*self.area/(2*areaD)
+       # velD = self.vel*self.area/(2*areaD);
         self.fin = True;
-        daughterA = branch(lenD, diaD, velD, genD)
-        daughterB = branch(lenD, diaD, velD, genD)
-        branches.append(daughterA)
-        branches.append(daughterB)
+        
+        #construct the daughter branches 
+        daughterA = branch(lenD, diaD, genD);
+        daughterB = branch(lenD, diaD, genD);
+        branches.append(daughterA);
+        daughterIndexA = len(branches);
+        branches.append(daughterB);
+        daughterIndexB = len(branches);
         
         
     #function to calculate the poiseulle losses in the pipe
     #velocity estimate taken from symetric, frictionless instance
     def Poiseuille(self):
       
-        poise =  ((8*numpy.pi*mew*self.length*self.velEstimate)/self.area);
-        return poise
+        poise =  ((8*numpy.pi*mew*self.length*self.velEstimate[-1])/self.area);
+        self.pLoss.append(poise);
     
-    #function to construct the symetric, frictionless instance
+    #function to assign initialised velocity
+    
+    def initVel(self):
+        self.velEstimate.append(initVelocityList[(self.gen)-1]);
+    
+    #function to iteratively solve the pressure and velocity at every node.
+    def nodeSolve(self):
+    
+        self.daughterVelA.append(branches[self.daughterIndexA].velEstimate)
+        self.daughterVelB = [];
+        self.daughterPresA = [];
+        self.daughterPresB = [];
+        
+        
+        pass
+
+
+    
+
+    
+    
+  
+  #function to construct the symetric, frictionless instance
 def frictionless():
     #search through branches and find total area of final gen
     #must be called after constructTree so that the branches index is complete
@@ -111,23 +165,42 @@ def frictionless():
     #create a list of all the total areas of the different generations 
     areaList=[];
     
+    for i in range(finalGen):
+        
+         areaList.append(0)
+  # print (areaList)
     
     for i in range(len(branches)):
-        if branches[i].gen == finalGen-1:
-            totalAreaFinal += branches[i].area
-        else:
-            pass
+        for j in range(finalGen):
+            if branches[i].gen == j:
+                areaList[j] += branches[i].area
+            else:
+                pass
+            
+ #   print (areaList)
+    #create a list of the estiamted velocities 
+   
+    for i in range( len(areaList)):
+        initVelocityList.append(Q0/areaList[i])
         
         
+    #call initVel to assign initial velocity
         
+    for i in range(len(branches)):
+        branches[i].initVel()
         
+    for i in range(len(branches)):
+        branches[i].Poiseuille()
+    
+    #print (initVelocityList)
+    
 
      
 def constructTree():
-    trach =  branch(0.12, 0.018, 1.96, 0);
+    trach =  branch(0.12, 0.018, 0);
     branches.append(trach);
     try:
-        for i in range(100000000):
+        for i in range(2**(finalGen+1)):
             while branches[i].gen <finalGen:
                 if branches[i].fin == False:
                     
@@ -138,9 +211,10 @@ def constructTree():
     except:
         print('end')
         
-        
+     
 constructTree();
+frictionless()  
 print (branches[2].length)
 print(len(branches))
+print(branches[-1].pLoss)
 
-frictionless()
