@@ -103,9 +103,9 @@ class branch:
         daughterA = branch(lenD, diaD, genD);
         daughterB = branch(lenD, diaD, genD);
         branches.append(daughterA);
-        daughterIndexA = len(branches);
+        self.daughterIndexA = len(branches);
         branches.append(daughterB);
-        daughterIndexB = len(branches);
+        self.daughterIndexB = len(branches);
         
         
     #function to calculate the poiseulle losses in the pipe
@@ -119,19 +119,72 @@ class branch:
     
     def initVel(self):
         self.velEstimate.append(initVelocityList[(self.gen)-1]);
+     
+    
+    
+    # def branchDataInit(self):
+    #     #first we must must initialise the estimated velocities in all nodes
+        
+    #    if  
+    #         self.daughterVelA.append(branches[self.daughterIndexA].velEstimate)
+    #         self.daughterVelB = [];
+    #         self.daughterPresA = [];
+    #         self.daughterPresB = [];
+            
+        
+        
+    #     pass
+    
+    
+    def functions(z):
+        
+        vel=
+        
     
     #function to iteratively solve the pressure and velocity at every node.
+    #this node solve function is applicable to the branches with daughters, 
+    #those without must be calculated a different way 
     def nodeSolve(self):
     
-        self.daughterVelA.append(branches[self.daughterIndexA].velEstimate)
-        self.daughterVelB = [];
-        self.daughterPresA = [];
-        self.daughterPresB = [];
+        self.daughterVelA.append(branches[self.daughterIndexA].velEstimate[-1])
+        self.daughterVelB.append(branches[self.daughterIndexB].velEstimate[-1])
+        self.daughterPresA.append(branches[self.daughterIndexA].presEstimate[-1])
+        self.daughterPresB.append(branches[self.daughterIndexB].presEstimate[-1])
+       
+        #now that daughter velocities and pressures are assigned we can begin
+        #calculation
+        
+        VelA = self.daughterVelA[-1];
+        VelB = self.daughterVelB[-1];
+        PresA = self.daughterPresA[-1];
+        PresB = self.daughterPresB[-1];  
+                       
+        newVel = float;
+        newPress = float;
+        
+        
+        
+        
+        
         
         
         pass
+        
+  
 
+    #function to call the nodeSolve and check the convergence of results
+def callNodeSolve():
+    
+    converged = False;
+    
+    
+    for i in range(len(branches)):
+        branches[i].nodeSolve();
+        
 
+    for in range(len(branches)):
+        if 
+            
     
 
     
