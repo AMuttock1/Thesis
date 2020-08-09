@@ -79,6 +79,7 @@ class branch:
         #be retrieved 
         self.myIndex = myIndex;
         
+        self.motherIndex = int;
         self.daughterIndexA = int;
         self.daughterIndexB = int;
         self.siblingIndex = int;
@@ -109,6 +110,8 @@ class branch:
         self.daughterIndexA = len(branches);
         branches.append(daughterA);
         
+        
+        
         daughterB = branch(lenD, diaD, genD, len(branches));
         self.daughterIndexB = len(branches);
         branches.append(daughterB);
@@ -130,26 +133,28 @@ class branch:
     #function to assign initialised velocity
     
     def initVel(self):
-        self.velEstimate.append(initVelocityList[(self.gen)]);
+        
+        for i in range(2):
+            self.velEstimate.append(initVelocityList[(self.gen)]);
      
     #funciton to assign initialised pressures
     
     def initPres(self):
         
         if self.gen == 0:
-            
-            pLoss = self.Poiseuille();
-            Pres1 = P0 - pLoss;
-            #print(P0, Pres1, P1)
-            self.presEstimate.append(Pres1);
-            
+            for i in range(2):     
+                pLoss = self.Poiseuille();
+                Pres1 = P0 - pLoss;
+                #print(P0, Pres1, P1)
+                self.presEstimate.append(Pres1);
+                
         else:
-            
-            #first guess is atmospheric 
-            
-            self.presEstimate.append(100000)
-            
-            pass
+            for i in range(2):    
+                #first guess is atmospheric 
+                
+                self.presEstimate.append(100000)
+                
+              
         
         
         
@@ -168,111 +173,275 @@ class branch:
     #     pass
     
     
-    def generalFunctionA(self, z):
+    ## IMPORTAND NOTE
+    #
+    #  All the node solvers solve using the average of the final and penultimate
+    #  values of each branch. This is so that the numbers drawn from the solve
+    #  up and the solve down can be accounted for 
+    #
+    ##
     
-        #will feeding down work?????
-        #I have a feeling it wont
+    def generalFunctionVelocity(self, z):
+    
+        
+        #solving for the velocity of the daughters based on pressure estimation 
         
         VSolveA = z[0];
         VSolveB = z[1];    
-        PSolveA = z[2];
+        
+        f = np.zeros(2);
+        
+        f[0] = self.area*((self.velEstimate[-1]+self.velEstimate[-2])/2) - (VSolveA*branches[self.daughterIndexA].area) - (VSolveB*branches[self.daughterIndexB].area);
+        
+        f[1] = ((branches[self.daughterIndexA].presEstimate[-1]+branches[self.daughterIndexA].presEstimate[-2])/2)  + (0.5*rho*VSolveA**2) + ((8*np.pi*mew*branches[self.daughterIndexA].length*VSolveA)/branches[self.daughterIndexA].area)  - ((branches[self.daughterIndexB].presEstimate[-1]+branches[self.daughterIndexB].presEstimate[-2])/2) - (0.5*rho*VSolveB**2)    - ((8*np.pi*mew*branches[self.daughterIndexB].length*VSolveB)/branches[self.daughterIndexB].area)
+        
+     #   f[2] = self.presEstimate[-1]   + (0.5*rho*self.velEstimate[-1]**2)  - branches[self.daughterIndexB].presEstimate[-1]  - (0.5*rho*VSolveB**2)  - ((8*np.pi*mew*branches[self.daughterIndexB].length*VSolveB)/branches[self.daughterIndexB].area)
+        
+        return f
+    
+    
+    def generalFunctionPressure(self, y):
+        
+        #solve for the pressure of the daughters based on the velocity estimation
+        
+        
+        PSolveA = y[0]
+        PSolveB = y[1];
+        
+        f = np.zeros(2);
+        
+        #Solve for 
+        
+        f[0] = PSolveA + (0.5*rho*((branches[self.daughterIndexA].velEstimate[-1]+branches[self.daughterIndexA].velEstimate[-2])/2)**2) + ((8*np.pi*mew*branches[self.daughterIndexA].length*((branches[self.daughterIndexA].velEstimate[-1]+branches[self.daughterIndexA].velEstimate[-2])/2))/branches[self.daughterIndexA].area) - (self.presEstimate[-1]+self.presEstimate[-2])/2 - (0.5*rho*((self.velEstimate[-1]+self.velEstimate[-2])/2)**2)
+        f[1] = PSolveB + (0.5*rho*((branches[self.daughterIndexB].velEstimate[-1]+branches[self.daughterIndexB].velEstimate[-2])/2)**2) + ((8*np.pi*mew*branches[self.daughterIndexB].length*((branches[self.daughterIndexB].velEstimate[-1]+branches[self.daughterIndexB].velEstimate[-2])/2))/branches[self.daughterIndexB].area) - (self.presEstimate[-1]+self.presEstimate[-2])/2 - (0.5*rho*((self.velEstimate[-1]+self.velEstimate[-2])/2)**2)
+        
+        return f
+    
+    def penultimateSolve(self, v):
+        
+         #this function invokes the boundary condition of the final bronchi, 
+        # where by pressure A and B are equal. This is used to solved for VA, VB, 
+        # PA and PB. 
+        
+        #This function should be called on the bronchi of generation (finalGen-1)
+        
+        
+        VSolveA = v[0];
+        VSolveB = v[1];    
+        PSolveA = v[2];
+        PSolveB = v[3];
+        
+        
+        f = np.zeros(4);
+        
+        f[0] = self.area*((self.velEstimate[-1]+self.velEstimate[-2])/2) - (VSolveA*branches[self.daughterIndexA].area) - (VSolveB*branches[self.daughterIndexB].area);
+        
+        f[1] = ((self.presEstimate[-1]+self.presEstimate[-2])/2) + (0.5*rho*((self.velEstimate[-1]+self.velEstimate[-2])/2)**2) - PSolveA - (0.5*rho*VSolveA**2) - ((8*np.pi*mew*branches[self.daughterIndexA].length*VSolveA)/branches[self.daughterIndexA].area) 
+        
+        f[2] = ((self.presEstimate[-1]+self.presEstimate[-2])/2) + (0.5*rho*((self.velEstimate[-1]+self.velEstimate[-2])/2)**2) - PSolveB - (0.5*rho*VSolveB**2) - ((8*np.pi*mew*branches[self.daughterIndexB].length*VSolveB)/branches[self.daughterIndexB].area)
+        
+        f[3] = PSolveA - PSolveB
+       
+        return f
+    
+    def reverseFunction(self, w):
+        
+        # solve the parents pressure from the daughters,
+        # as well as resolve the velocity distribution in the two daughters 
+        
+        PSolve1 = w[0];
+        VSolveA = w[1];
+        VSolveB = w[2];
+        
         
         f = np.zeros(3);
         
-        f[0] = self.area*self.velEstimate[-1] - (VSolveA*branches[self.daughterIndexA].area) - (VSolveB*branches[self.daughterIndexB].area);
+        f[0] = self.area*((self.velEstimate[-1]+self.velEstimate[-2])/2) - (VSolveA*branches[self.daughterIndexA].area) - (VSolveB*branches[self.daughterIndexB].area);
         
-        f[1] = self.presEstimate[-1]  + (0.5*rho*self.velEstimate[-1]**2)  - PSolveA - (0.5*rho*VSolveA**2)    - ((8*np.pi*mew*branches[self.daughterIndexA].length*VSolveA)/branches[self.daughterIndexA].area)
+        f[1] = (PSolve1) + (0.5*rho*((self.velEstimate[-1]+self.velEstimate[-2])/2)**2) - ((branches[self.daughterIndexA].presEstimate[-1]+branches[self.daughterIndexA].presEstimate[-2])/2)  - (0.5*rho*VSolveA**2) - ((8*np.pi*mew*branches[self.daughterIndexA].length*VSolveA)/branches[self.daughterIndexA].area) 
         
-        f[2] = self.presEstimate[-1]   + (0.5*rho*self.velEstimate[-1]**2)  - branches[self.daughterIndexB].presEstimate[-1]  - (0.5*rho*VSolveB**2)  - ((8*np.pi*mew*branches[self.daughterIndexB].length*VSolveB)/branches[self.daughterIndexB].area)
-        
-        return f
-    
-    
-    def generalFunctionB(self, y):
-        
-        #solve the pressure of the other daughter
-        #two options here. Carry forward P1 because it is more known, or 
-        #use PA estimate for PB to make it symetric. Not sure... 
-        #(going to start with P1)
-        #I can't mirror the above equations as it may result in a different 
-        #velocity and that would be a disaster
-        
-        PSolveB = y;
-        
-        f = 0;
-        
-        #### this format will require this function to immidiately access 
-        #VSolveB as calculated above
-        
-        f = (self.presEstimate[-1]+(0.5*rho*self.velEstimate[-1]**2)) - (PSolveB + (0.5*rho*branches[self.daughterIndexB].velEstimate[-1]**2) + ((8*np.pi*mew*branches[self.daughterIndexB].length*branches[self.daughterIndexB].velEstimate[-1])/branches[self.daughterIndexB].area))
+        f[2] = (PSolve1) + (0.5*rho*((self.velEstimate[-1]+self.velEstimate[-2])/2)**2) - ((branches[self.daughterIndexB].presEstimate[-1]+branches[self.daughterIndexB].presEstimate[-2])/2)  - (0.5*rho*VSolveB**2) - ((8*np.pi*mew*branches[self.daughterIndexB].length*VSolveB)/branches[self.daughterIndexB].area)
+         
         
         return f
     
-    
-    
+        
     
     #function to iteratively solve the pressure and velocity at every node.
     #this node solve function is applicable to the branches with daughters, 
     #those without must be calculated a different way 
-    def nodeSolve(self):
+    def nodeSolve(self, solvingDown, solvingBottom, firstRun):
     
-        self.daughterVelA.append(branches[self.daughterIndexA].velEstimate[-1])
-        self.daughterVelB.append(branches[self.daughterIndexB].velEstimate[-1])
-        self.daughterPresA.append(branches[self.daughterIndexA].presEstimate[-1])
-        self.daughterPresB.append(branches[self.daughterIndexB].presEstimate[-1])
+      #  self.daughterVelA.append(branches[self.daughterIndexA].velEstimate[-1])
+      #  self.daughterVelB.append(branches[self.daughterIndexB].velEstimate[-1])
+      #  self.daughterPresA.append(branches[self.daughterIndexA].presEstimate[-1])
+      #  self.daughterPresB.append(branches[self.daughterIndexB].presEstimate[-1])
        
         #now that daughter velocities and pressures are assigned we can begin
         #calculation
         
-        VelA = self.daughterVelA[-1];
-        VelB = self.daughterVelB[-1];
-        PresA = self.daughterPresA[-1];
-        PresB = self.daughterPresB[-1];  
-                       
+        VelA = branches[self.daughterIndexA].velEstimate[-1]
+        VelB = branches[self.daughterIndexB].velEstimate[-1]
+        PresA = branches[self.daughterIndexA].presEstimate[-1]
+        PresB = branches[self.daughterIndexB].presEstimate[-1]  
+        Pres1 = self.presEstimate[-1];               
+        
         newVelA = float;
         newPresA = float;
         newVelB = float;
         newPresB = float;
+        newPres1 = float;
+        
+        # solvingDown = bool;
+        # solvingBottom = bool;
+        # firstRun = bool;
+        
         
         # Guess values for genFuncA appear as follows in the function:
         #VSolveA = z[0];
         #VSolveB = z[1];    
-        #PSolveA = z[2];
         
-        funcAGuess = [VelA,VelB,PresA];
-        funcBGuess = PresB;
-        if self.gen == finalGen:
+        
+        
+        if solvingDown == False:
             
-            #call the final function
-            pass
-        else:
-            #call the general function A then general function B for each daughter
+            print ("reverse solve at branch:", self.myIndex)
+            # call the reverseSolveFunction
+            # solvingDown should become true again for solving generation zero. 
+            # there by generation 1 is the final generation to invoke solvingDown
             
-            z = fsolve(self.generalFunctionA,funcAGuess)
+            # The format of the guess values:
+            # PSolve1 = w[0];
+            # VSolveA = w[1];
+            # VSolveB = w[2];
+        
+            #the guess values:
+            funcReverseGuess = [Pres1, VelA, VelB];
+            
+            w = fsolve(self.reverseFunction, funcReverseGuess);
+            
+            newPres1 = w[0];
+            newVelA = w[1];
+            newVelB = w[2];
+            
+            self.presEstimate.append(newPres1)
+            branches[self.daughterIndexA].velEstimate.append(newVelA);
+            branches[self.daughterIndexB].velEstimate.append(newVelB);
+        
+            print("newPres1", newPres1)
+        
+        
+        elif solvingBottom == True:
+            
+            print ("penul solve at branch:", self.myIndex)
+            # call the Penultimate function
+            
+            # The format of the guess vaules:
+            # VSolveA = v[0];
+            # VSolveB = v[1];    
+            # PSolveA = v[2];
+            # PSolveB = v[3];
+        
+            #the guess values:
+            funcPenultimateGuess = [VelA, VelB, PresA, PresB];
+            
+            v = fsolve(self.penultimateSolve, funcPenultimateGuess);
+            
+            
+            newVelA = v[0];
+            newVelB = v[1];
+            
+            # IMPORTANT!!! must use iterative addition of pressure in order to give meaning
+            # to the reverse solver (otherwise the solver would not make progress)
+            # thus we take an average of the current solution for presA and B and 
+            # the previous solution
+            
+            
+            newPresA = (v[2] + PresA)/2;
+            newPresB = (v[3] + PresB)/2;
+            
+            branches[self.daughterIndexA].presEstimate.append(newPresA); 
+            branches[self.daughterIndexB].presEstimate.append(newPresB);
+            branches[self.daughterIndexA].velEstimate.append(newVelA);
+            branches[self.daughterIndexB].velEstimate.append(newVelB);
+            
+            
+           # print("newVelA", newVelA, "newVelB", newVelB, "newPresA", newPresA, "newPresB", newPresB)
+           # pass
+            print("newPresA", newPresA, "newPresB", newPresB)
+        
+        elif firstRun == True:
+            
+            print ("firstrun solve at branch:", self.myIndex)
+            #The guess values:
+            
+            funcVelGuess = [VelA, VelB];
+            funcPresGuess = [PresA, PresB];
+            #call the general function to solve for pressure first (as velocity
+            # estimation has been made)
+            
+            y = fsolve(self.generalFunctionPressure, funcPresGuess)
+            
+            newPresA = y[0];
+            newPresB = y[1];
+             
+             
+            branches[self.daughterIndexA].presEstimate.append(newPresA); 
+            branches[self.daughterIndexB].presEstimate.append(newPresB);
+            
+            
+            #call the general function to solve velocity for velocity
+            
+            z = fsolve(self.generalFunctionVelocity,funcVelGuess)
             
             newVelA = z[0];
             newVelB = z[1];
-            newPresA = z[2];
+           
             
             branches[self.daughterIndexA].velEstimate.append(newVelA);
             branches[self.daughterIndexB].velEstimate.append(newVelB);
-            branches[self.daughterIndexA].presEstimate.append(newPresA);
             
-            #now that the new calculations have been assigned, the calculation for B can begin
+            print("newPresA", newPresA, "newPresB", newPresB)
+            #print (z,y)
             
-            y = fsolve(self.generalFunctionB, funcBGuess)
+         #   print("newVelA", newVelA, "newVelB", newVelB, "newPresA", newPresA, "newPresB", newPresB)
+        else: 
             
-            newPresB = y;
+            print ("general solve at branch:", self.myIndex)
+            #solve the general solving down functions in order velocity -> 
+            # pressure
             
+            #the guess values:
+            funcVelGuess = [VelA, VelB];
+            funcPresGuess = [PresA, PresB];
+            
+            print("funcPresGuess", funcPresGuess)
+            
+            z = fsolve(self.generalFunctionVelocity,funcVelGuess)
+            
+            newVelA = z[0];
+            newVelB = z[1];
+           
+            
+            branches[self.daughterIndexA].velEstimate.append(newVelA);
+            branches[self.daughterIndexB].velEstimate.append(newVelB);
+            
+            y = fsolve(self.generalFunctionPressure, funcPresGuess)
+            
+            newPresB = y[0];
+            newPresA = y[1];
+             
+             
+            branches[self.daughterIndexA].presEstimate.append(newPresA); 
             branches[self.daughterIndexB].presEstimate.append(newPresB);
             
-            #print (z,y)
+            print("newPresA", newPresA, "newPresB", newPresB)
             
             pass
         
         
         
-        pass
+        
         
   
 ##### end of class
@@ -283,19 +452,45 @@ class branch:
 def callNodeSolve():
     
    # converged = False;
-    
+    solvingBottom = False;
+    firstRun = True;
    # while converged == False:
-    for j in range(5):
+    for j in range(150):
         print(j)
+        solvingDown = True
         for i in range(len(branches)):
-            if branches[i].gen <  finalGen - 1 :
-                branches[i].nodeSolve();
+           # print (i)
+            if branches[i].gen < finalGen-1:
+                branches[i].nodeSolve(solvingDown, solvingBottom, firstRun);
               #  if (len(branches[i].velEstimate) >= 3):
               #      print("Branch", branches[i].myIndex, "has", len(branches[i].velEstimate),  "entries")
               #      if ( branches[i].velEstimate[-1] - branches[i].velEstimate[-2] ) < 0.0001:
                         #converged = True;
                        # print ("converged")
-
+                
+            elif branches[i].gen < finalGen :
+                solvingBottom = True;
+                firstRun = False;
+                branches[i].nodeSolve(solvingDown, solvingBottom, firstRun);
+                
+            else:
+                pass
+            
+            
+        solvingBottom = False;        
+        firstRun = False;
+        solvingDown = False;
+        it = len(branches)-1;
+        while it >= 0:
+           # print(it)
+            it -= 1;
+            if branches[it].gen==finalGen:
+                pass
+            elif branches[it].gen == 0:
+                pass
+            else:
+                branches[it].nodeSolve(solvingDown, solvingBottom, firstRun)
+                
    # for in range(len(branches)):
     #    pass 
             
